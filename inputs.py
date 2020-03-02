@@ -1,5 +1,7 @@
 import pyaudio
+import aubio
 import sys
+import numpy as np
 
 class inputDevice(object):
     def __init__(self, config, beatProcessor):
@@ -10,6 +12,7 @@ class micInput(inputDevice):
     def __init__(self, config, beatProcessor):
         super().__init__(config, beatProcessor)
         self.audio = pyaudio.PyAudio()
+        self.volume = 0
         self.openInput()
 
     def openInput(self):
@@ -36,5 +39,6 @@ class micInput(inputDevice):
 
     def audio_sample_callback(self, in_data, frame_count, time_info, status):
         sample = self.beatProcessor.processBeat(in_data) 
+        self.volume += aubio.db_spl(sample)
         return (sample, pyaudio.paContinue)
 

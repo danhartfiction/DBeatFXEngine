@@ -7,5 +7,3 @@ class Config(object):
         self.sampleRate = 44100 
         self.bufferSize = 512
         self.fftSize = 1024
-
-        self.mainLoopTick = 0.01
