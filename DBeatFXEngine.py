@@ -18,3 +18,4 @@ if __name__ == "__main__":
 
     while True:
         effectProcessor.mainLoop()
+        time.sleep(0.01)

@@ -10,6 +10,8 @@ class aubioBeats(beatEngine):
     def __init__(self, config):
         super().__init__(config)
         self.epoch = time.time()
+        self.last_beat = 0
+        self.next_beat = 0
         self.tempo = aubio.tempo("default", self.config.fftSize, self.config.bufferSize, self.config.sampleRate)
     
     def processBeat(self, in_data):
