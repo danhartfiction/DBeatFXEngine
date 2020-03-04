@@ -142,10 +142,10 @@ class dranofx(effectEngine):
             if confidence < 0.05:
                 self.lastEffect = 'fluff'
                 self.fluffEffect(isBeat)
-            elif confidence < .15:
+            elif confidence < .2:
                 self.lastEffect = 'soft'
                 self.softEffect(isBeat)
-            elif confidence < .25:
+            elif confidence < .35:
                 self.lastEffect = 'hard'
                 self.hardEffect(isBeat)
             else:
