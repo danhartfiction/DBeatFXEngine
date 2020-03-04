@@ -19,6 +19,8 @@ class dranofx(effectEngine):
         self.outputProcessor = outputProcessor
         self.beat_num = 0
         self.next_beat = 0
+        self.lastChange = 0
+        self.lastEffect = 'fluff'
         self.didBeat = False
 #        self.min_observed_volume = 100000
 #        self.max_observed_volume = -100000
@@ -32,6 +34,7 @@ class dranofx(effectEngine):
         self.fade_offset = 0
         self.fade_i = 0
         self.hardFactor = 0
+        self.hardToggle = False
         self.crisp_mode = 0
 
     def fluffEffect(self, isBeat):
@@ -56,6 +59,10 @@ class dranofx(effectEngine):
         # Fade in / fade out with BPM
         now = time.time()
         bpm = self.beatProcessor.tempo.get_bpm()
+        if bpm < 60:
+            bpm = 2*bpm
+        if bpm > 140:
+            bpm = bpm/2
 #        print("fadeIntensity: {} BPM: {} Volume: {}".format(self.fadeIntensity, bpm, self.relative_volume))
         if isBeat:
             if self.fadeHalf:
@@ -84,11 +91,22 @@ class dranofx(effectEngine):
     def hardEffect(self, isBeat):
         now = time.time()
         bpm = self.beatProcessor.tempo.get_bpm()
-        if isBeat:
-            self.crisp_mode = 0 if self.crisp_mode == 1 else 1
-            self.hardFactor = 1
+        if bpm > 140:
+            if isBeat:
+                self.crisp_mode = 0 if self.crisp_mode == 1 else 1
+                self.hardFactor = 1
+            else:
+                self.hardFactor -= .1 if self.hardFactor >= .1 else 0
         else:
-            self.hardFactor -= .1 if self.hardFactor >= .1 else 0
+            if isBeat:
+                if self.hardToggle:
+                    self.crisp_mode = 0 if self.crisp_mode == 1 else 1
+                    self.hardFactor = 1
+                    self.hardToggle = False
+                else:
+                    self.hardToggle = True
+            else:
+                self.hardFactor -= .1 if self.hardFactor >= .1 else 0
         v = round(self.hardFactor * 255, 4)
         i = self.crisp_mode
         for output in self.outputProcessor.outputs:
@@ -115,14 +133,33 @@ class dranofx(effectEngine):
         
   
     def processEffect(self, isBeat, confidence):
-        if confidence < 0.05:
-            self.fluffEffect(isBeat)
-        elif confidence < .13:
-            self.softEffect(isBeat)
-        elif confidence < .21:
-            self.hardEffect(isBeat)
+        now = time.time()
+        bpm = self.beatProcessor.tempo.get_bpm()
+        if isBeat:
+            print("BPM: {} Beat Confidence: {} Effect: {}".format(bpm, self.beatProcessor.tempo.get_confidence(), self.lastEffect))
+        if now - self.lastChange > 8:
+            self.lastChange = now
+            if confidence < 0.05:
+                self.lastEffect = 'fluff'
+                self.fluffEffect(isBeat)
+            elif confidence < .15:
+                self.lastEffect = 'soft'
+                self.softEffect(isBeat)
+            elif confidence < .25:
+                self.lastEffect = 'hard'
+                self.hardEffect(isBeat)
+            else:
+                self.lastEffect = 'crisp'
+                self.crispEffect(isBeat)
         else:
-            self.crispEffect(isBeat)
+            if self.lastEffect == 'fluff': 
+                self.fluffEffect(isBeat)
+            elif self.lastEffect == 'soft':
+                self.softEffect(isBeat)
+            elif self.lastEffect == 'hard':
+                self.hardEffect(isBeat)
+            elif self.lastEffect == 'crisp':
+                self.crispEffect(isBeat)
         self.outputProcessor.update()
 
     def mainLoop(self):
