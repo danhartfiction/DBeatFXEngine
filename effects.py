@@ -36,6 +36,12 @@ class dranofx(effectEngine):
         self.hardFactor = 0
         self.hardToggle = False
         self.crisp_mode = 0
+        self.cylonCycle = 0
+        self.cylonDirection = True 
+        self.cylonPink = True
+        self.cylonLast = 0
+        self.lastCylonFade = 0
+        self.cylonBeat = 0
 
     def fluffEffect(self, isBeat):
         # Soft sparkle effect
@@ -87,6 +93,58 @@ class dranofx(effectEngine):
                     else:
                         output.pixels[pixel] = [v, 0, v]
                 self.fade_i+=1
+
+    def cylonEffect(self, isBeat):
+        now = time.time()
+        bpm = self.beatProcessor.tempo.get_bpm()
+        if isBeat and self.cylonBeat == 1:
+            self.cylonBeat = 0
+            self.cylonLast = now
+            if self.cylonDirection:
+                self.cylonCycle = 100
+                self.cylonDirection = False
+            else:
+                self.cylonDirection = True
+                self.cylonCycle = 0
+            if random.random() > .4:
+                self.cylonPink = False if self.cylonPink else True 
+        else:
+            if isBeat:
+                self.cylonBeat += 1
+            cycle = round((now - self.cylonLast) / (120/bpm) * 100)
+            if self.cylonDirection:
+                self.cylonCycle = cycle
+                self.cylonCycle = 100 if self.cylonCycle > 100 else self.cylonCycle
+            else:
+                self.cylonCycle = 100 - cycle
+                self.cylonCycle = 0 if self.cylonCycle < 0 else self.cylonCycle
+        
+        self.lastCylon = now
+        for output in self.outputProcessor.outputs:
+            cylon_pixel = round(self.cylonCycle/100 * output.num_pixels) 
+            cylon_distance1 = round(2/100 * output.num_pixels)
+            cylon_distance2 = round(5/100 * output.num_pixels)
+            cylon_distance3 = round(10/100 * output.num_pixels)
+            c0 = [0, 255, 255] 
+            c1 = [0, 191, 191]
+            c2 = [0, 127, 127]
+            c3 = [0, 64, 64]
+            if self.cylonPink == True:
+                c0 = [255, 0, 255] 
+                c1 = [191, 0, 191]
+                c2 = [127, 0, 127]
+                c3 = [64, 0, 64]
+            for pixel in range(output.num_pixels):
+                if pixel == cylon_pixel:
+                    output.pixels[pixel] = c0
+                elif cylon_pixel - cylon_distance1 <= pixel <= cylon_pixel + cylon_distance1:
+                   output.pixels[pixel] = c1
+                elif cylon_pixel - cylon_distance2 <= pixel <= cylon_pixel + cylon_distance2:
+                   output.pixels[pixel] = c2
+                elif cylon_pixel - cylon_distance3 <= pixel <= cylon_pixel + cylon_distance3:
+                   output.pixels[pixel] = c3
+                else:
+                   output.pixels[pixel] = [0, 0, 0]
 
     def hardEffect(self, isBeat):
         now = time.time()
@@ -157,9 +215,11 @@ class dranofx(effectEngine):
             elif self.lastEffect == 'soft':
                 self.softEffect(isBeat)
             elif self.lastEffect == 'hard':
-                self.hardEffect(isBeat)
+#                self.hardEffect(isBeat)
+                self.cylonEffect(isBeat)
             elif self.lastEffect == 'crisp':
-                self.crispEffect(isBeat)
+#                self.crispEffect(isBeat)
+                self.hardEffect(isBeat)
         self.outputProcessor.update()
 
     def mainLoop(self):
